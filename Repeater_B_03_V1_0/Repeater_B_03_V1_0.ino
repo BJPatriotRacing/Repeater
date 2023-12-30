@@ -47,7 +47,7 @@
 #include <Adafruit_ILI9341_Keypad.h>
 
 
-#define VERSION "Signal repeater 1.0"
+#define VERSION "Signal repeater 1.1"
 
 // #define DEBUG_ON
 
@@ -63,9 +63,7 @@
 #define ROW2 160
 #define ROW3 200
 
-bool NoLocalConnection = false;
-bool RadioFound = false, R_UseStartTime = false, W_UseStartTime = false, B_UseStartTime = false, RaceHasStarted = false;
-bool RHaveData = false, WHaveData = false, BHaveData = false;
+bool RadioFound = false;
 
 char buf[60];
 
@@ -129,7 +127,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  Serial.println("Starting WiFi Station");
+  // Serial.println("Starting signal repeater");
 
   SPI.begin();
   Display.begin();
@@ -433,8 +431,10 @@ void DisplayHeader() {
   Display.setFont(&FONT_ITEM);
 
   // print red header
-  Display.setCursor(COL1 - 20, 70);
-  Display.print("Red");
+  Display.setCursor(COL1 - 20, 80);
+  Display.setFont(&FONT_HEADER);
+  Display.print("5");
+  Display.setFont(&FONT_ITEM);
   Display.setCursor(COL1 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
@@ -450,8 +450,10 @@ void DisplayHeader() {
 
   // print white header
   Display.setTextColor(C_WHITE, C_BLACK);
-  Display.setCursor(COL2 - 20, 70);
-  Display.print("White");
+  Display.setCursor(COL2 - 20, 80);
+  Display.setFont(&FONT_HEADER);
+  Display.print("15");
+  Display.setFont(&FONT_ITEM);
   Display.setCursor(COL2 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
@@ -467,8 +469,10 @@ void DisplayHeader() {
 
   // print blue header
   Display.setTextColor(C_BLUE, C_BLACK);
-  Display.setCursor(COL3 - 20, 70);
-  Display.print("Blue");
+  Display.setCursor(COL3 - 20, 80);
+  Display.setFont(&FONT_HEADER);
+  Display.print("1");
+  Display.setFont(&FONT_ITEM);
   Display.setCursor(COL3 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
@@ -492,7 +496,7 @@ void ProcessLoopTouch() {
   if (PressIt(SetupBtn) == true) {
     Password.getInput();
     Serial.println(Password.value);
-    if ((Password.value) == 1515) {
+    if ((Password.value) == 1515.0) { // key pad returns float...
       Display.fillScreen(C_BLACK);
       SetupScreen();
       Display.fillScreen(C_BLACK);
