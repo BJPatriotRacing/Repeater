@@ -47,9 +47,9 @@
 #include <Adafruit_ILI9341_Keypad.h>
 
 
-#define VERSION "Signal repeater 1.1"
+#define VERSION "Signal repeater 1.2"
 
-// #define DEBUG_ON
+//#define DEBUG_ON
 
 #define FONT_HEADER arial16
 #define FONT_DATA arial12
@@ -108,7 +108,6 @@ Button RRadioPowerBtn(&Display);
 Button WRadioPowerBtn(&Display);
 Button BRadioPowerBtn(&Display);
 
-
 Button RResetBtn(&Display);
 Button WResetBtn(&Display);
 Button BResetBtn(&Display);
@@ -127,7 +126,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  // Serial.println("Starting signal repeater");
+  Serial.println("Starting signal repeater");
 
   SPI.begin();
   Display.begin();
@@ -154,15 +153,17 @@ void setup() {
 
   ///////////////////////////////////////////////
   // start radio #0
+  //Serial.println("Starting Transceiver 0");
 
   RadioFound = false;
   Display.fillRoundRect(20, 200, 280, 30, 4, C_DKGREY);
   Display.fillRoundRect(20, 200, 25, 30, 4, C_GREY);
   Display.setCursor(30, 220);
-  Display.setTextColor(C_WHITE);
+  Display.setTextColor(C_BLACK);
   Display.print(F("Starting Transceiver 0"));
   delay(100);
   Serial_0.begin(9600);
+  delay(100);
   for (i = 0; i < 3; i++) {
     RadioFound = Trans_0.init();
 
@@ -176,6 +177,7 @@ void setup() {
 #ifdef DEBUG_ON
     Trans_0.PrintParameters();
 #endif
+
     RChannel = Trans_0.GetChannel();
     RDataRate = Trans_0.GetAirDataRate();
     RRadioPower = Trans_0.GetTransmitPower();
@@ -191,6 +193,8 @@ void setup() {
     Display.print(F("Transceiver 0 FAIL"));
   }
 
+
+  //Serial.println("Starting Transceiver 1");
   ///////////////////////////////////////////////
   // start radio #1
   RadioFound = false;
@@ -199,8 +203,8 @@ void setup() {
   Display.setCursor(30, 220);
   Display.print(F("Starting Transceiver 1"));
   delay(100);
-
   Serial_1.begin(9600);
+  delay(100);
   for (i = 0; i < 3; i++) {
     RadioFound = Trans_1.init();
 
@@ -228,6 +232,7 @@ void setup() {
     Display.print(F("Transceiver 1 FAIL"));
   }
 
+  //Serial.println("Starting Transceiver 2");
   ///////////////////////////////////////////////
   // start radio #2
   RadioFound = false;
@@ -236,8 +241,8 @@ void setup() {
   Display.setCursor(30, 220);
   Display.print(F("Starting Transceiver 2"));
   delay(100);
-
   Serial_2.begin(9600);
+  delay(100);
   for (i = 0; i < 3; i++) {
     RadioFound = Trans_2.init();
 
@@ -275,46 +280,46 @@ void setup() {
   DoneBtn.init(270, 20, 90, 35, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, "OK", 0, 0, &FONT_ITEM);
 
   sprintf(buf, "%d", RChannel);
-  RChannelBtn.init(COL1, 67, 90, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  RChannelBtn.init(COL1, 67, 95, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
   sprintf(buf, "%d", WChannel);
-  WChannelBtn.init(COL2, 67, 90, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  WChannelBtn.init(COL2, 67, 95, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, &FONT_ITEM);
   sprintf(buf, "%d", BChannel);
-  BChannelBtn.init(COL3, 67, 90, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  BChannelBtn.init(COL3, 67, 95, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
 
-  // aor data rate
+  // air data rate
   if (RDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     RDataRate = 0;
   }
-  RDataRateBtn.init(COL1, 107, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, &FONT_ITEM);
+  RDataRateBtn.init(COL1, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, &FONT_ITEM);
   if (WDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     WDataRate = 0;
   }
-  WDataRateBtn.init(COL2, 107, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[WDataRate], 0, 0, &FONT_ITEM);
+  WDataRateBtn.init(COL2, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[WDataRate], 0, 0, &FONT_ITEM);
   if (BDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     BDataRate = 0;
   }
-  BDataRateBtn.init(COL3, 107, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, &FONT_ITEM);
+  BDataRateBtn.init(COL3, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, &FONT_ITEM);
 
   // radio power
   if (RRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     RRadioPower = 0;
   }
-  RRadioPowerBtn.init(COL1, 147, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[RRadioPower], 0, 0, &FONT_ITEM);
+  RRadioPowerBtn.init(COL1, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[RRadioPower], 0, 0, &FONT_ITEM);
   if (WRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     WRadioPower = 0;
   }
-  WRadioPowerBtn.init(COL2, 147, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[WRadioPower], 0, 0, &FONT_ITEM);
+  WRadioPowerBtn.init(COL2, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[WRadioPower], 0, 0, &FONT_ITEM);
   if (BRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     BRadioPower = 0;
   }
-  BRadioPowerBtn.init(COL3, 147, 90, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[BRadioPower], 0, 0, &FONT_ITEM);
+  BRadioPowerBtn.init(COL3, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[BRadioPower], 0, 0, &FONT_ITEM);
 
-  RResetBtn.init(COL1, 207, 90, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
-  WResetBtn.init(COL2, 207, 90, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
-  BResetBtn.init(COL3, 207, 90, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  RResetBtn.init(COL1, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  WResetBtn.init(COL2, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  BResetBtn.init(COL3, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
 
   NumberInput.init(C_BLACK, C_WHITE, C_BLUE, C_DKBLUE, C_WHITE, C_CYAN, C_YELLOW, &FONT_ITEM);
-  NumberInput.setMinMax(1.0, 32.0);
+  NumberInput.setMinMax(0.0, 69.0);
   NumberInput.enableDecimal(false);
   NumberInput.enableNegative(false);
 
@@ -323,7 +328,7 @@ void setup() {
   Password.enableNegative(false);
   Password.hideInput();
   Password.setInitialText("Enter Password");
-
+  delay(500);
   Display.fillRoundRect(20, 200, 280, 30, 4, C_DKGREY);
   Display.fillRoundRect(20, 200, 280, 30, 4, C_GREY);
   Display.setCursor(30, 220);
@@ -341,10 +346,6 @@ void setup() {
 }
 
 /*
-
-
-
-
 
 */
 
@@ -433,7 +434,7 @@ void DisplayHeader() {
   // print red header
   Display.setCursor(COL1 - 20, 80);
   Display.setFont(&FONT_HEADER);
-  Display.print("5");
+  Display.print(RChannel);
   Display.setFont(&FONT_ITEM);
   Display.setCursor(COL1 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
@@ -452,7 +453,7 @@ void DisplayHeader() {
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.setCursor(COL2 - 20, 80);
   Display.setFont(&FONT_HEADER);
-  Display.print("15");
+  Display.print(WChannel);
   Display.setFont(&FONT_ITEM);
   Display.setCursor(COL2 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
@@ -471,7 +472,7 @@ void DisplayHeader() {
   Display.setTextColor(C_BLUE, C_BLACK);
   Display.setCursor(COL3 - 20, 80);
   Display.setFont(&FONT_HEADER);
-  Display.print("1");
+  Display.print(BChannel);
   Display.setFont(&FONT_ITEM);
   Display.setCursor(COL3 - 25, ROW1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
@@ -495,8 +496,7 @@ void ProcessLoopTouch() {
 
   if (PressIt(SetupBtn) == true) {
     Password.getInput();
-    Serial.println(Password.value);
-    if ((Password.value) == 1515.0) { // key pad returns float...
+    if ((Password.value) == 1515.0) {  // key pad returns float...
       Display.fillScreen(C_BLACK);
       SetupScreen();
       Display.fillScreen(C_BLACK);
@@ -580,8 +580,7 @@ void SetupScreen() {
       NumberInput.value = RChannel;
       NumberInput.getInput();
       RChannel = (uint8_t)NumberInput.value;
-      Trans_0.SetChannel(RChannel);
-      Trans_0.SaveParameters(PERMANENT);
+      RDirty = true;
       sprintf(buf, "%d", RChannel);
       RChannelBtn.setText(buf);
       DrawSetupScreen();
@@ -591,8 +590,7 @@ void SetupScreen() {
       NumberInput.value = WChannel;
       NumberInput.getInput();
       WChannel = (uint8_t)NumberInput.value;
-      Trans_1.SetChannel(WChannel);
-      Trans_1.SaveParameters(PERMANENT);
+      WDirty = true;
       sprintf(buf, "%d", WChannel);
       WChannelBtn.setText(buf);
       DrawSetupScreen();
@@ -602,8 +600,7 @@ void SetupScreen() {
       NumberInput.value = BChannel;
       NumberInput.getInput();
       BChannel = (uint8_t)NumberInput.value;
-      Trans_2.SetChannel(BChannel);
-      Trans_2.SaveParameters(PERMANENT);
+      BDirty = true;
       sprintf(buf, "%d", BChannel);
       BChannelBtn.setText(buf);
       DrawSetupScreen();
@@ -617,7 +614,6 @@ void SetupScreen() {
       RDataRateBtn.setText(AirRateText[RDataRate]);
       RDataRateBtn.draw();
       RDirty = true;
-      //DrawSetupScreen();
     }
     if (PressIt(RRadioPowerBtn) == true) {
       RRadioPower++;
@@ -627,29 +623,28 @@ void SetupScreen() {
       RRadioPowerBtn.setText(HighPowerText[RRadioPower]);
       RRadioPowerBtn.draw();
       RDirty = true;
-      //DrawSetupScreen();
     }
 
 
     if (PressIt(WDataRateBtn) == true) {
+
       WDataRate++;
       if (WDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
-        RDataRate = 0;
+        WDataRate = 0;
       }
       WDataRateBtn.setText(AirRateText[WDataRate]);
       WDataRateBtn.draw();
       WDirty = true;
-      //DrawSetupScreen();
     }
     if (PressIt(WRadioPowerBtn) == true) {
       WRadioPower++;
+
       if (WRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
         WRadioPower = 0;
       }
       WRadioPowerBtn.setText(HighPowerText[WRadioPower]);
       WRadioPowerBtn.draw();
       WDirty = true;
-      //DrawSetupScreen();
     }
 
     if (PressIt(BDataRateBtn) == true) {
@@ -660,7 +655,6 @@ void SetupScreen() {
       BDataRateBtn.setText(AirRateText[BDataRate]);
       BDataRateBtn.draw();
       BDirty = true;
-      //DrawSetupScreen();
     }
     if (PressIt(BRadioPowerBtn) == true) {
       BRadioPower++;
@@ -670,34 +664,32 @@ void SetupScreen() {
       BRadioPowerBtn.setText(HighPowerText[BRadioPower]);
       BRadioPowerBtn.draw();
       BDirty = true;
-      //DrawSetupScreen();
     }
 
     if (PressIt(RResetBtn) == true) {
       Trans_0.SetAddressH(0);
       Trans_0.SetAddressL(0);
       Trans_0.SetSpeed(0b00011100);
-      Trans_0.SetChannel(0);
       Trans_0.SetOptions(0b01000100);
-      Trans_0.SetAirDataRate(0b100);
       Trans_0.SetChannel(5);
+      delay(50);
       Trans_0.SaveParameters(PERMANENT);
+      delay(50);
 #ifdef DEBUG_ON
-      delay(1000);
       Trans_0.PrintParameters();
 #endif
     }
+
     if (PressIt(WResetBtn) == true) {
       Trans_1.SetAddressH(0);
       Trans_1.SetAddressL(0);
       Trans_1.SetSpeed(0b00011100);
-      Trans_1.SetChannel(0);
       Trans_1.SetOptions(0b01000100);
-      Trans_1.SetAirDataRate(0b100);
       Trans_1.SetChannel(15);
+      delay(50);
       Trans_1.SaveParameters(PERMANENT);
+      delay(50);
 #ifdef DEBUG_ON
-      delay(1000);
       Trans_1.PrintParameters();
 #endif
     }
@@ -705,13 +697,11 @@ void SetupScreen() {
       Trans_2.SetAddressH(0);
       Trans_2.SetAddressL(0);
       Trans_2.SetSpeed(0b00011100);
-      Trans_2.SetChannel(0);
       Trans_2.SetOptions(0b01000100);
-      Trans_2.SetAirDataRate(0b100);
       Trans_2.SetChannel(1);
       Trans_2.SaveParameters(PERMANENT);
+      delay(50);
 #ifdef DEBUG_ON
-      delay(1000);
       Trans_2.PrintParameters();
 #endif
     }
@@ -720,22 +710,41 @@ void SetupScreen() {
   delay(50);
 
   if (RDirty) {
+    Trans_0.SetChannel(RChannel);
     Trans_0.SetAirDataRate(RDataRate);
-    Trans_0.SetAirDataRate(RRadioPower);
-    delay(10);
+    Trans_0.SetTransmitPower(RRadioPower);
+    delay(50);
     Trans_0.SaveParameters(PERMANENT);
+    delay(50);
+#ifdef DEBUG_ON
+    delay(1000);
+    Trans_2.PrintParameters();
+#endif
   }
   if (WDirty) {
+    Serial.println(WDataRate);
+    Trans_1.SetChannel(WChannel);
     Trans_1.SetAirDataRate(WDataRate);
-    Trans_1.SetAirDataRate(WRadioPower);
-    delay(10);
+    Trans_1.SetTransmitPower(WRadioPower);
+    delay(50);
     Trans_1.SaveParameters(PERMANENT);
+    delay(50);
+#ifdef DEBUG_ON
+    delay(1000);
+    Trans_1.PrintParameters();
+#endif
   }
   if (BDirty) {
+    Trans_2.SetChannel(BChannel);
     Trans_2.SetAirDataRate(BDataRate);
-    Trans_2.SetAirDataRate(BRadioPower);
-    delay(10);
+    Trans_2.SetTransmitPower(BRadioPower);
+    delay(50);
     Trans_2.SaveParameters(PERMANENT);
+    delay(50);
+#ifdef DEBUG_ON
+    delay(1000);
+    Trans_2.PrintParameters();
+#endif
   }
 }
 
