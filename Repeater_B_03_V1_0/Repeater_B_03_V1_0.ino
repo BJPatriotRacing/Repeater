@@ -25,8 +25,10 @@
   2.8   Kris        5-29-20     updated reset ebyte code
   3.0   Kris        11-23-20    recompiled with updated driver list
   3.1   Kris        11-23-20    switched to easytransfer to handle struct packing issues
-
+  
   B03Vv1.0   Kris   10-09-23    redesign for 3 transceivers
+  B03Vv1.0   Kris   10-23-24    updated few new struct and numberpad lib and lastest compiler
+
 
 */
 
@@ -47,7 +49,7 @@
 #include <Adafruit_ILI9341_Keypad.h>
 
 
-#define VERSION "Signal repeater 1.2"
+#define VERSION "Signal repeater 1.21"
 
 //#define DEBUG_ON
 
@@ -55,13 +57,13 @@
 #define FONT_DATA arial12
 #define FONT_ITEM arial10
 
-#define COL1 50
-#define COL2 150
-#define COL3 250
+#define COLUMN_1 50
+#define COLUMN_2 150
+#define COLUMN_3 250
 
-#define ROW1 120
-#define ROW2 160
-#define ROW3 200
+#define ROW_1 120
+#define ROW_2 160
+#define ROW_3 200
 
 bool RadioFound = false;
 
@@ -72,6 +74,7 @@ uint8_t RDataRate = 0, WDataRate = 0, BDataRate = 0;
 uint8_t RRadioPower = 0, WRadioPower = 0, BRadioPower = 0;
 uint8_t h, m, s, b, i;
 int BtnX, BtnY, BtnZ;
+uint16_t ScreenLeft = 0, ScreenRight = 3500, ScreenTop = 700, ScreenBottom = 3600;
 
 #define Serial_0 Serial2
 SoftwareSerial Serial_1(33, 32);
@@ -121,9 +124,6 @@ elapsedMillis BTimer = 0;
 
 void setup() {
 
-  disableCore0WDT();
-  disableCore1WDT();
-
   Serial.begin(115200);
 
   Serial.println("Starting signal repeater");
@@ -136,7 +136,7 @@ void setup() {
 
   // fire up the touch display
   Touch.begin();
-  Touch.setRotation(1);
+  Touch.setRotation(3);
 
   Display.fillRect(10, 40, 300, 20, C_RED);
   Display.fillRect(10, 160, 300, 20, C_BLUE);
@@ -162,7 +162,10 @@ void setup() {
   Display.setTextColor(C_BLACK);
   Display.print(F("Starting Transceiver 0"));
   delay(100);
-  Serial_0.begin(9600);
+  //Serial_0.begin(9600);
+    Serial_0.begin(9600, SERIAL_8N1, 16, 17);
+
+
   delay(100);
   for (i = 0; i < 3; i++) {
     RadioFound = Trans_0.init();
@@ -280,54 +283,59 @@ void setup() {
   DoneBtn.init(270, 20, 90, 35, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, "OK", 0, 0, &FONT_ITEM);
 
   sprintf(buf, "%d", RChannel);
-  RChannelBtn.init(COL1, 67, 95, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  RChannelBtn.init(COLUMN_1, 67, 95, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
   sprintf(buf, "%d", WChannel);
-  WChannelBtn.init(COL2, 67, 95, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  WChannelBtn.init(COLUMN_2, 67, 95, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, &FONT_ITEM);
   sprintf(buf, "%d", BChannel);
-  BChannelBtn.init(COL3, 67, 95, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
+  BChannelBtn.init(COLUMN_3, 67, 95, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, &FONT_ITEM);
 
   // air data rate
   if (RDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     RDataRate = 0;
   }
-  RDataRateBtn.init(COL1, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, &FONT_ITEM);
+  RDataRateBtn.init(COLUMN_1, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, &FONT_ITEM);
   if (WDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     WDataRate = 0;
   }
-  WDataRateBtn.init(COL2, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[WDataRate], 0, 0, &FONT_ITEM);
+  WDataRateBtn.init(COLUMN_2, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[WDataRate], 0, 0, &FONT_ITEM);
   if (BDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     BDataRate = 0;
   }
-  BDataRateBtn.init(COL3, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, &FONT_ITEM);
+  BDataRateBtn.init(COLUMN_3, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, &FONT_ITEM);
 
   // radio power
   if (RRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     RRadioPower = 0;
   }
-  RRadioPowerBtn.init(COL1, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[RRadioPower], 0, 0, &FONT_ITEM);
+  RRadioPowerBtn.init(COLUMN_1, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[RRadioPower], 0, 0, &FONT_ITEM);
   if (WRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     WRadioPower = 0;
   }
-  WRadioPowerBtn.init(COL2, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[WRadioPower], 0, 0, &FONT_ITEM);
+  WRadioPowerBtn.init(COLUMN_2, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[WRadioPower], 0, 0, &FONT_ITEM);
   if (BRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
     BRadioPower = 0;
   }
-  BRadioPowerBtn.init(COL3, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[BRadioPower], 0, 0, &FONT_ITEM);
+  BRadioPowerBtn.init(COLUMN_3, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[BRadioPower], 0, 0, &FONT_ITEM);
 
-  RResetBtn.init(COL1, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
-  WResetBtn.init(COL2, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
-  BResetBtn.init(COL3, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  RResetBtn.init(COLUMN_1, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  WResetBtn.init(COLUMN_2, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
+  BResetBtn.init(COLUMN_3, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, &FONT_ITEM);
 
-  NumberInput.init(C_BLACK, C_WHITE, C_BLUE, C_DKBLUE, C_WHITE, C_CYAN, C_YELLOW, &FONT_ITEM);
+  NumberInput.init(C_BLACK, C_WHITE, C_BLUE, C_WHITE, C_DKBLUE, &FONT_ITEM);
   NumberInput.setMinMax(0.0, 69.0);
   NumberInput.enableDecimal(false);
   NumberInput.enableNegative(false);
+  NumberInput.setTouchLimits(ScreenLeft, ScreenRight, ScreenTop, ScreenBottom);
 
-  Password.init(C_RED, C_WHITE, C_BLUE, C_DKBLUE, C_WHITE, C_CYAN, C_YELLOW, &FONT_ITEM);
+
+  Password.init(C_GREY, C_WHITE, C_BLUE, C_WHITE, C_DKBLUE, &FONT_ITEM);
+  Password.setTouchLimits(ScreenLeft, ScreenRight, ScreenTop, ScreenBottom);
   Password.enableDecimal(false);
   Password.enableNegative(false);
+  Password.setMinMax(0.0, 9999.0);
   Password.hideInput();
-  Password.setInitialText("Enter Password");
+  Password.setInitialText("Password");
+
   delay(500);
   Display.fillRoundRect(20, 200, 280, 30, 4, C_DKGREY);
   Display.fillRoundRect(20, 200, 280, 30, 4, C_GREY);
@@ -359,63 +367,63 @@ void loop() {
   // RED car
   if (DataPacket_0.receiveData()) {
     // found
-    Display.fillCircle(COL1 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL1 - 40, ROW2, 9, C_GREEN);
-    Display.fillCircle(COL1 - 40, ROW3, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_GREEN);
+    Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_DKGREY);
     ProcessLoopTouch();
     DataPacket_0.sendData();
     // sent
-    Display.fillCircle(COL1 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL1 - 40, ROW2, 9, C_DKGREY);
-    Display.fillCircle(COL1 - 40, ROW3, 9, C_GREEN);
+    Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_GREEN);
     RTimer = 0;
   } else {
     // waiting
     ProcessLoopTouch();
     if (RTimer > 100) {
-      Display.fillCircle(COL1 - 40, ROW1, 9, C_GREEN);
-      Display.fillCircle(COL1 - 40, ROW2, 9, C_DKGREY);
-      Display.fillCircle(COL1 - 40, ROW3, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_GREEN);
+      Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_DKGREY);
     }
   }
 
   // WHITE car
   if (DataPacket_1.receiveData()) {
-    Display.fillCircle(COL2 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL2 - 40, ROW2, 9, C_GREEN);
-    Display.fillCircle(COL2 - 40, ROW3, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_GREEN);
+    Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_DKGREY);
     ProcessLoopTouch();
     DataPacket_1.sendData();
-    Display.fillCircle(COL2 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL2 - 40, ROW2, 9, C_DKGREY);
-    Display.fillCircle(COL2 - 40, ROW3, 9, C_GREEN);
+    Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_GREEN);
     WTimer = 0;
   } else {
     ProcessLoopTouch();
     if (WTimer > 100) {
-      Display.fillCircle(COL2 - 40, ROW1, 9, C_GREEN);
-      Display.fillCircle(COL2 - 40, ROW2, 9, C_DKGREY);
-      Display.fillCircle(COL2 - 40, ROW3, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_GREEN);
+      Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_DKGREY);
     }
   }
 
   // BLUE car
   if (DataPacket_2.receiveData()) {
-    Display.fillCircle(COL3 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL3 - 40, ROW2, 9, C_GREEN);
-    Display.fillCircle(COL3 - 40, ROW3, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_GREEN);
+    Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_DKGREY);
     ProcessLoopTouch();
     DataPacket_2.sendData();
-    Display.fillCircle(COL3 - 40, ROW1, 9, C_DKGREY);
-    Display.fillCircle(COL3 - 40, ROW2, 9, C_DKGREY);
-    Display.fillCircle(COL3 - 40, ROW3, 9, C_GREEN);
+    Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_DKGREY);
+    Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_GREEN);
     BTimer = 0;
   } else {
     ProcessLoopTouch();
     if (BTimer > 100) {
-      Display.fillCircle(COL3 - 40, ROW1, 9, C_GREEN);
-      Display.fillCircle(COL3 - 40, ROW2, 9, C_DKGREY);
-      Display.fillCircle(COL3 - 40, ROW3, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_GREEN);
+      Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_DKGREY);
+      Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_DKGREY);
     }
   }
 }
@@ -432,60 +440,60 @@ void DisplayHeader() {
   Display.setFont(&FONT_ITEM);
 
   // print red header
-  Display.setCursor(COL1 - 20, 80);
+  Display.setCursor(COLUMN_1 - 20, 80);
   Display.setFont(&FONT_HEADER);
   Display.print(RChannel);
   Display.setFont(&FONT_ITEM);
-  Display.setCursor(COL1 - 25, ROW1 + 5);
+  Display.setCursor(COLUMN_1 - 25, ROW_1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
-  Display.drawCircle(COL1 - 40, ROW1, 10, C_WHITE);
-  Display.setCursor(COL1 - 25, ROW2 + 5);
+  Display.drawCircle(COLUMN_1 - 40, ROW_1, 10, C_WHITE);
+  Display.setCursor(COLUMN_1 - 25, ROW_2 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Found");
-  Display.drawCircle(COL1 - 40, ROW2, 10, C_WHITE);
-  Display.setCursor(COL1 - 25, ROW3 + 5);
+  Display.drawCircle(COLUMN_1 - 40, ROW_2, 10, C_WHITE);
+  Display.setCursor(COLUMN_1 - 25, ROW_3 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Sent");
-  Display.drawCircle(COL1 - 40, ROW3, 10, C_WHITE);
+  Display.drawCircle(COLUMN_1 - 40, ROW_3, 10, C_WHITE);
 
   // print white header
   Display.setTextColor(C_WHITE, C_BLACK);
-  Display.setCursor(COL2 - 20, 80);
+  Display.setCursor(COLUMN_2 - 20, 80);
   Display.setFont(&FONT_HEADER);
   Display.print(WChannel);
   Display.setFont(&FONT_ITEM);
-  Display.setCursor(COL2 - 25, ROW1 + 5);
+  Display.setCursor(COLUMN_2 - 25, ROW_1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
-  Display.drawCircle(COL2 - 40, ROW1, 10, C_WHITE);
-  Display.setCursor(COL2 - 25, ROW2 + 5);
+  Display.drawCircle(COLUMN_2 - 40, ROW_1, 10, C_WHITE);
+  Display.setCursor(COLUMN_2 - 25, ROW_2 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Found");
-  Display.drawCircle(COL2 - 40, ROW2, 10, C_WHITE);
-  Display.setCursor(COL2 - 25, ROW3 + 5);
+  Display.drawCircle(COLUMN_2 - 40, ROW_2, 10, C_WHITE);
+  Display.setCursor(COLUMN_2 - 25, ROW_3 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Sent");
-  Display.drawCircle(COL2 - 40, ROW3, 10, C_WHITE);
+  Display.drawCircle(COLUMN_2 - 40, ROW_3, 10, C_WHITE);
 
   // print blue header
   Display.setTextColor(C_BLUE, C_BLACK);
-  Display.setCursor(COL3 - 20, 80);
+  Display.setCursor(COLUMN_3 - 20, 80);
   Display.setFont(&FONT_HEADER);
   Display.print(BChannel);
   Display.setFont(&FONT_ITEM);
-  Display.setCursor(COL3 - 25, ROW1 + 5);
+  Display.setCursor(COLUMN_3 - 25, ROW_1 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Waiting");
-  Display.drawCircle(COL3 - 40, ROW1, 10, C_WHITE);
-  Display.setCursor(COL3 - 25, ROW2 + 5);
+  Display.drawCircle(COLUMN_3 - 40, ROW_1, 10, C_WHITE);
+  Display.setCursor(COLUMN_3 - 25, ROW_2 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Found");
-  Display.drawCircle(COL3 - 40, ROW2, 10, C_WHITE);
-  Display.setCursor(COL3 - 25, ROW3 + 5);
+  Display.drawCircle(COLUMN_3 - 40, ROW_2, 10, C_WHITE);
+  Display.setCursor(COLUMN_3 - 25, ROW_3 + 5);
   Display.setTextColor(C_WHITE, C_BLACK);
   Display.print("Sent");
-  Display.drawCircle(COL3 - 40, ROW3, 10, C_WHITE);
+  Display.drawCircle(COLUMN_3 - 40, ROW_3, 10, C_WHITE);
 
   SetupBtn.draw();
 }
@@ -540,8 +548,8 @@ void ProcessTouch() {
     BtnY = TP.y;
     BtnZ = TP.z;
     //yellow
-    BtnX = map(BtnX, 3970, 307, 320, 0);
-    BtnY = map(BtnY, 3905, 237, 240, 0);
+    BtnX = map(BtnX, ScreenLeft, ScreenRight, 320, 0);
+    BtnY = map(BtnY, ScreenTop, ScreenBottom, 240, 0);
 
     //black headers
     //BtnX  = map(BtnX, 0, 3905, 320, 0);
