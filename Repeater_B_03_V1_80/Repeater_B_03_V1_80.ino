@@ -27,7 +27,7 @@
   B03Vv1.5   Kris   10-23-24    updated few new struct and numberpad lib and lastest compiler
   B03Vv1.7   Kris   1-6-25      added ping mechanism to make repeater placement easier
   B03Vv1.77  Kris   1-19-25     improved some ping stuff and removed password (just too sensitive to enter in field)
-  B03Vv1.78  Kris   1-19-25     added better sendping diagnostics
+  B03Vv1.78  Kris   1-19-25     added better send ping diagnostics
   B05.02.00   Kris   6-11-2026   built on new boards, new Transceivers, better ping mode, etc.
 */
 
@@ -48,7 +48,7 @@
 
 #define VERSION "B5.02.00"
 
-//#define DEBUG_ON
+#define DEBUG_ON
 
 #define FONT_HEADER arial16
 #define FONT_DATA arial12
@@ -58,9 +58,16 @@
 #define COLUMN_2 150
 #define COLUMN_3 250
 
+#define DATA_COL1 115
+#define DATA_COL2 185
+#define DATA_COL3 255
+
+
+
 #define ROW_1 120
 #define ROW_2 160
 #define ROW_3 200
+
 #define STATUS_COL 140
 #define SEND_PING_TIME 1000
 #define STATUS_PIN 15
@@ -78,8 +85,8 @@ uint8_t DeviceID = 0, SourceID = 0;
 bool AlertToggle = true;
 uint16_t PingCount = 0;
 uint8_t RSSINoise = 0;
-uint8_t EncryptLow = 0, EncryptHigh = 0;
-uint16_t REncryptKey = 0, WEncryptKey = 0, BEncryptKey = 0;
+uint8_t RAddressL = 0, WAddressL = 0, BAddressL = 0;
+uint8_t RAddressH = 0, WAddressH = 0, BAddressH = 0;
 
 #define Serial_0 Serial2
 SoftwareSerial Serial_1(33, 32);
@@ -89,9 +96,9 @@ EBYTE_E220 EBYTE_0(&Serial_0, 13, 13, 36);
 EBYTE_E220 EBYTE_1(&Serial_1, 26, 26, 39);
 EBYTE_E220 EBYTE_2(&Serial_2, 4, 4, 34);
 
-PAYLOAD Data_0;
-PAYLOAD Data_1;
-PAYLOAD Data_2;
+Transceiver Data_0;
+Transceiver Data_1;
+Transceiver Data_2;
 
 EasyTransfer DataPacket_0;
 EasyTransfer DataPacket_1;
@@ -109,17 +116,16 @@ Button BChannelBtn(&Display);
 Button RChannelBtn(&Display);
 Button WChannelBtn(&Display);
 
-Button REncryptBtn(&Display);
-Button WEncryptBtn(&Display);
-Button BEncryptBtn(&Display);
+Button RAddressLBtn(&Display);
+Button RAddressHBtn(&Display);
+Button WAddressLBtn(&Display);
+Button WAddressHBtn(&Display);
+Button BAddressLBtn(&Display);
+Button BAddressHBtn(&Display);
 
 Button RDataRateBtn(&Display);
 Button WDataRateBtn(&Display);
 Button BDataRateBtn(&Display);
-
-Button RRadioPowerBtn(&Display);
-Button WRadioPowerBtn(&Display);
-Button BRadioPowerBtn(&Display);
 
 Button RResetBtn(&Display);
 Button WResetBtn(&Display);
@@ -177,13 +183,11 @@ void setup() {
     delay(100);
   }
 
-
-
   Display.fillRect(0, 0, 319, 40, C_WHITE);
   Display.setTextColor(C_BLACK, C_WHITE);
   Display.setFont(&FONT_HEADER);
   Display.setCursor(15, 30);
-  Display.print(F("Patriot Racing S/R"));
+  Display.print(F("Signal Booster"));
 
   Display.setTextColor(C_WHITE);
   Display.setFont(&FONT_ITEM);
@@ -222,18 +226,20 @@ void setup() {
     Display.setCursor(STATUS_COL, 110);
     Display.print(F("OK"));
     Display.setTextColor(C_WHITE);
-    Display.setCursor(STATUS_COL + 80, 110);
+    Display.setCursor(STATUS_COL + 40, 110);
     Display.print(RChannel);
-    Display.setCursor(STATUS_COL + 140, 110);
+    Display.print(" / ");
     Display.print(RDataRate);
+    Display.print(" / ");
+    Display.print(RAddressL);
+    Display.print(" / ");
+    Display.print(RAddressH);
+    Display.print(" / ");
+    Display.print(EBYTE_0.getTransmitPower());
   } else {
     Display.setTextColor(C_RED);
     Display.setCursor(STATUS_COL, 110);
     Display.print(F("FAIL"));
-    Display.setCursor(STATUS_COL + 80, 110);
-    Display.print(F("?"));
-    Display.setCursor(STATUS_COL + 140, 110);
-    Display.print(F("?"));
   }
 
   Serial_1.begin(9600);
@@ -242,18 +248,21 @@ void setup() {
     Display.setCursor(STATUS_COL, 135);
     Display.print(F("OK"));
     Display.setTextColor(C_WHITE);
-    Display.setCursor(STATUS_COL + 80, 135);
+    Display.setCursor(STATUS_COL + 40, 135);
     Display.print(WChannel);
-    Display.setCursor(STATUS_COL + 140, 135);
+    Display.print(" / ");
     Display.print(WDataRate);
+    Display.print(" / ");
+    Display.print(WAddressL);
+    Display.print(" / ");
+    Display.print(WAddressH);
+    Display.print(" / ");
+    Display.print(EBYTE_1.getTransmitPower());
+
   } else {
     Display.setTextColor(C_RED);
     Display.setCursor(STATUS_COL, 135);
     Display.print(F("FAIL"));
-    Display.setCursor(STATUS_COL + 80, 135);
-    Display.print(F("?"));
-    Display.setCursor(STATUS_COL + 140, 135);
-    Display.print(F("?"));
   }
 
   Serial_2.begin(9600);
@@ -262,18 +271,20 @@ void setup() {
     Display.setCursor(STATUS_COL, 160);
     Display.print(F("OK"));
     Display.setTextColor(C_WHITE);
-    Display.setCursor(STATUS_COL + 80, 160);
+    Display.setCursor(STATUS_COL + 40, 160);
     Display.print(BChannel);
-    Display.setCursor(STATUS_COL + 140, 160);
+    Display.print(" / ");
     Display.print(BDataRate);
+    Display.print(" / ");
+    Display.print(RAddressL);
+    Display.print(" / ");
+    Display.print(RAddressH);
+    Display.print(" / ");
+    Display.print(EBYTE_2.getTransmitPower());
   } else {
     Display.setTextColor(C_RED);
     Display.setCursor(STATUS_COL, 160);
     Display.print(F("FAIL"));
-    Display.setCursor(STATUS_COL + 80, 160);
-    Display.print(F("?"));
-    Display.setCursor(STATUS_COL + 140, 160);
-    Display.print(F("?"));
   }
 
   Display.setTextColor(C_GREEN);
@@ -311,12 +322,9 @@ void loop() {
   /////////////////////////////////////////////////////////////////////////
   // RED car
   if (DataPacket_0.receiveData()) {
-
-    // found
-    Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_DKGREY);
     ProcessLoopTouch();
+    Display.fillCircle(DATA_COL1 + 21, 161, 14, C_GREEN);
+    Display.drawCircle(DATA_COL1 + 20, 160, 15, C_WHITE);
     SourceID = Data_0.RPM_DNO_DID & 0b0000000000000011;
 
     if (SourceID != DeviceID) {
@@ -326,29 +334,25 @@ void loop() {
       // now save actual data
       Data_0.RPM_DNO_DID = Data_0.RPM_DNO_DID | (DeviceID & 0b0000000000000011);
       Data_0.ALTITUDE_SID = Data_0.ALTITUDE_SID | (SourceID & 0b0000000000000011);
-      SmartDelay(100);
-      DataPacket_0.sendData();
-    }
 
-    Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_GREEN);
+      DataPacket_0.sendData();
+      SmartDelay(100);
+      Display.fillCircle(DATA_COL1 + 21, 201, 14, C_GREEN);
+      Display.drawCircle(DATA_COL1 + 20, 200, 15, C_WHITE);
+    }
 
     RTimer = 0;
   } else {
     // waiting
     ProcessLoopTouch();
     if (RTimer > 100) {
-      Display.fillCircle(COLUMN_1 - 40, ROW_1, 9, C_GREEN);
-      Display.fillCircle(COLUMN_1 - 40, ROW_2, 9, C_DKGREY);
-      Display.fillCircle(COLUMN_1 - 40, ROW_3, 9, C_DKGREY);
+      BlankRed();
     }
   }
   // WHITE car
   if (DataPacket_1.receiveData()) {
-    Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_DKGREY);
+    Display.fillCircle(DATA_COL2 + 21, 161, 14, C_GREEN);
+    Display.drawCircle(DATA_COL2 + 20, 160, 15, C_WHITE);
     ProcessLoopTouch();
     SourceID = Data_1.RPM_DNO_DID & 0b0000000000000011;
     if (SourceID != DeviceID) {
@@ -360,25 +364,20 @@ void loop() {
       Data_1.ALTITUDE_SID = Data_1.ALTITUDE_SID | (SourceID & 0b0000000000000011);
       DataPacket_1.sendData();
       SmartDelay(100);
+      Display.fillCircle(DATA_COL2 + 21, 201, 14, C_GREEN);
+      Display.drawCircle(DATA_COL2 + 20, 200, 15, C_WHITE);
     }
-
-    Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_GREEN);
     WTimer = 0;
   } else {
     ProcessLoopTouch();
     if (WTimer > 100) {
-      Display.fillCircle(COLUMN_2 - 40, ROW_1, 9, C_GREEN);
-      Display.fillCircle(COLUMN_2 - 40, ROW_2, 9, C_DKGREY);
-      Display.fillCircle(COLUMN_2 - 40, ROW_3, 9, C_DKGREY);
+      BlankWhite();
     }
   }
   // BLUE car
   if (DataPacket_2.receiveData()) {
-    Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_DKGREY);
+    Display.fillCircle(DATA_COL3 + 21, 161, 14, C_GREEN);
+    Display.drawCircle(DATA_COL3 + 20, 160, 15, C_WHITE);
     ProcessLoopTouch();
     SourceID = Data_2.RPM_DNO_DID & 0b0000000000000011;
     if (SourceID != DeviceID) {
@@ -390,20 +389,42 @@ void loop() {
       Data_2.ALTITUDE_SID = Data_2.ALTITUDE_SID | (SourceID & 0b0000000000000011);
       DataPacket_2.sendData();
       SmartDelay(100);
+      Display.fillCircle(DATA_COL3 + 21, 201, 14, C_GREEN);
+      Display.drawCircle(DATA_COL3 + 20, 200, 15, C_WHITE);
     }
-
-    Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_DKGREY);
-    Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_GREEN);
-    Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_GREEN);
     BTimer = 0;
   } else {
     ProcessLoopTouch();
     if (BTimer > 100) {
-      Display.fillCircle(COLUMN_3 - 40, ROW_1, 9, C_GREEN);
-      Display.fillCircle(COLUMN_3 - 40, ROW_2, 9, C_DKGREY);
-      Display.fillCircle(COLUMN_3 - 40, ROW_3, 9, C_DKGREY);
+      BlankBlue();
     }
   }
+}
+
+void BlankRed() {
+  Display.fillCircle(DATA_COL1 + 21, 121, 14, C_GREEN);
+  Display.drawCircle(DATA_COL1 + 20, 120, 15, C_WHITE);
+  Display.fillCircle(DATA_COL1 + 21, 161, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL1 + 20, 160, 15, C_WHITE);
+  Display.fillCircle(DATA_COL1 + 21, 201, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL1 + 20, 200, 15, C_WHITE);
+}
+
+void BlankWhite() {
+  Display.fillCircle(DATA_COL2 + 21, 121, 14, C_GREEN);
+  Display.drawCircle(DATA_COL2 + 20, 120, 15, C_WHITE);
+  Display.fillCircle(DATA_COL2 + 21, 161, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL2 + 20, 160, 15, C_WHITE);
+  Display.fillCircle(DATA_COL2 + 21, 201, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL2 + 20, 200, 15, C_WHITE);
+}
+void BlankBlue() {
+  Display.fillCircle(DATA_COL3 + 21, 121, 14, C_GREEN);
+  Display.drawCircle(DATA_COL3 + 20, 120, 15, C_WHITE);
+  Display.fillCircle(DATA_COL3 + 21, 161, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL3 + 20, 160, 15, C_WHITE);
+  Display.fillCircle(DATA_COL3 + 21, 201, 14, C_DKGREY);
+  Display.drawCircle(DATA_COL3 + 20, 200, 15, C_WHITE);
 }
 
 /* 
@@ -467,6 +488,7 @@ void SendPings() {
     }
 
     if (PingTime > SEND_PING_TIME) {
+
       PingTime = 0;
       Data_0.WARNINGS_PE = 0;
       Data_0.WARNINGS_PE = (PING_MODE << 10);
@@ -524,68 +546,30 @@ void DisplayHeader() {
   Display.setTextColor(C_BLACK, C_WHITE);
   Display.setFont(&FONT_HEADER);
   Display.setCursor(10, 30);
-  Display.print(F("Patriot Racing #"));
+  Display.print(F("Booster #"));
   Display.print(DeviceID);
 
+  Display.setFont(&FONT_ITEM);
   Display.setTextColor(C_RED, C_BLACK);
-  Display.setFont(&FONT_ITEM);
 
-  // print red header
-  Display.setCursor(COLUMN_1 - 20, 80);
-  Display.setFont(&FONT_HEADER);
-  Display.print(RChannel);
-  Display.setFont(&FONT_ITEM);
-  Display.setCursor(COLUMN_1 - 25, ROW_1 + 5);
+  Display.setCursor(DATA_COL1, 80);
+  Display.print(F("Red"));
   Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Waiting");
-  Display.drawCircle(COLUMN_1 - 40, ROW_1, 10, C_WHITE);
-  Display.setCursor(COLUMN_1 - 25, ROW_2 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Found");
-  Display.drawCircle(COLUMN_1 - 40, ROW_2, 10, C_WHITE);
-  Display.setCursor(COLUMN_1 - 25, ROW_3 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Sent");
-  Display.drawCircle(COLUMN_1 - 40, ROW_3, 10, C_WHITE);
-
-  // print white header
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.setCursor(COLUMN_2 - 20, 80);
-  Display.setFont(&FONT_HEADER);
-  Display.print(WChannel);
-  Display.setFont(&FONT_ITEM);
-  Display.setCursor(COLUMN_2 - 25, ROW_1 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Waiting");
-  Display.drawCircle(COLUMN_2 - 40, ROW_1, 10, C_WHITE);
-  Display.setCursor(COLUMN_2 - 25, ROW_2 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Found");
-  Display.drawCircle(COLUMN_2 - 40, ROW_2, 10, C_WHITE);
-  Display.setCursor(COLUMN_2 - 25, ROW_3 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Sent");
-  Display.drawCircle(COLUMN_2 - 40, ROW_3, 10, C_WHITE);
-
-  // print blue header
+  Display.setCursor(DATA_COL2, 80);
+  Display.print(F("White"));
   Display.setTextColor(C_BLUE, C_BLACK);
-  Display.setCursor(COLUMN_3 - 20, 80);
-  Display.setFont(&FONT_HEADER);
-  Display.print(BChannel);
-  Display.setFont(&FONT_ITEM);
-  Display.setCursor(COLUMN_3 - 25, ROW_1 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Waiting");
-  Display.drawCircle(COLUMN_3 - 40, ROW_1, 10, C_WHITE);
-  Display.setCursor(COLUMN_3 - 25, ROW_2 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Found");
-  Display.drawCircle(COLUMN_3 - 40, ROW_2, 10, C_WHITE);
-  Display.setCursor(COLUMN_3 - 25, ROW_3 + 5);
-  Display.setTextColor(C_WHITE, C_BLACK);
-  Display.print("Sent");
-  Display.drawCircle(COLUMN_3 - 40, ROW_3, 10, C_WHITE);
+  Display.setCursor(DATA_COL3, 80);
+  Display.print(F("Blue"));
 
+  Display.setTextColor(C_WHITE, C_BLACK);
+  Display.setFont(&FONT_ITEM);
+
+  Display.setCursor(5, 120);
+  Display.print(F("Waiting"));
+  Display.setCursor(5, 160);
+  Display.print(F("Processing"));
+  Display.setCursor(5, 200);
+  Display.print(F("Sending"));
   SetupBtn.draw();
 }
 
@@ -614,7 +598,7 @@ void ProcessLoopTouch() {
   if (PressIt(SetupBtn) == true) {
 
     Display.fillScreen(C_BLACK);
-    SetupScreen();
+    Settings();
     Display.fillScreen(C_BLACK);
     DisplayHeader();
   }
@@ -672,12 +656,12 @@ void ProcessTouch() {
   }
 }
 
-void SetupScreen() {
+void Settings() {
 
   bool KeepIn = true;
   bool RDirty = false, WDirty = false, BDirty = false;
 
-  DrawSetupScreen();
+  DrawSettingsScreen();
 
   while (KeepIn) {
 
@@ -697,7 +681,7 @@ void SetupScreen() {
       }
       sprintf(buf, "%d", DeviceID);
       DeviceIDBtn.setText(buf);
-      DrawSetupScreen();
+      DrawSettingsScreen();
     }
 
     if (PressIt(RChannelBtn) == true) {
@@ -708,7 +692,7 @@ void SetupScreen() {
       RDirty = true;
       sprintf(buf, "%d", RChannel);
       RChannelBtn.setText(buf);
-      DrawSetupScreen();
+      DrawSettingsScreen();
     }
     if (PressIt(WChannelBtn) == true) {
       NumberInput.setMinMax(0.0, 80.0);
@@ -718,7 +702,7 @@ void SetupScreen() {
       WDirty = true;
       sprintf(buf, "%d", WChannel);
       WChannelBtn.setText(buf);
-      DrawSetupScreen();
+      DrawSettingsScreen();
     }
     if (PressIt(BChannelBtn) == true) {
       NumberInput.setMinMax(0.0, 80.0);
@@ -728,34 +712,58 @@ void SetupScreen() {
       BDirty = true;
       sprintf(buf, "%d", BChannel);
       BChannelBtn.setText(buf);
-      DrawSetupScreen();
+      DrawSettingsScreen();
     }
 
-    if (PressIt(REncryptBtn) == true) {
-      NumberInput.setMinMax(0.0, 65535.0);
-      NumberInput.value = REncryptKey;
+    if (PressIt(RAddressLBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = RAddressL;
       NumberInput.getInput();
-      REncryptKey = (uint16_t)NumberInput.value;
+      RAddressL = (uint8_t)NumberInput.value;
       RDirty = true;
-      DrawSetupScreen();
+      DrawSettingsScreen();
+    }
+    if (PressIt(RAddressHBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = RAddressH;
+      NumberInput.getInput();
+      RAddressH = (uint8_t)NumberInput.value;
+      RDirty = true;
+      DrawSettingsScreen();
     }
 
-    if (PressIt(WEncryptBtn) == true) {
-      NumberInput.setMinMax(0.0, 65535.0);
-      NumberInput.value = WEncryptKey;
+    if (PressIt(WAddressLBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = WAddressL;
       NumberInput.getInput();
-      WEncryptKey = (uint16_t)NumberInput.value;
+      WAddressL = (uint8_t)NumberInput.value;
       WDirty = true;
-      DrawSetupScreen();
+      DrawSettingsScreen();
+    }
+    if (PressIt(WAddressHBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = WAddressH;
+      NumberInput.getInput();
+      WAddressH = (uint8_t)NumberInput.value;
+      WDirty = true;
+      DrawSettingsScreen();
     }
 
-    if (PressIt(BEncryptBtn) == true) {
-      NumberInput.setMinMax(0.0, 65535.0);
-      NumberInput.value = BEncryptKey;
+    if (PressIt(BAddressLBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = BAddressL;
       NumberInput.getInput();
-      BEncryptKey = (uint16_t)NumberInput.value;
+      BAddressL = (uint8_t)NumberInput.value;
       BDirty = true;
-      DrawSetupScreen();
+      DrawSettingsScreen();
+    }
+    if (PressIt(BAddressHBtn) == true) {
+      NumberInput.setMinMax(0.0, 255.0);
+      NumberInput.value = BAddressH;
+      NumberInput.getInput();
+      BAddressH = (uint8_t)NumberInput.value;
+      BDirty = true;
+      DrawSettingsScreen();
     }
 
     if (PressIt(RDataRateBtn) == true) {
@@ -767,16 +775,6 @@ void SetupScreen() {
       RDataRateBtn.draw();
       RDirty = true;
     }
-    if (PressIt(RRadioPowerBtn) == true) {
-      RRadioPower++;
-      if (RRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-        RRadioPower = 0;
-      }
-      RRadioPowerBtn.setText(HighPowerText[RRadioPower]);
-      RRadioPowerBtn.draw();
-      RDirty = true;
-    }
-
 
     if (PressIt(WDataRateBtn) == true) {
 
@@ -788,17 +786,6 @@ void SetupScreen() {
       WDataRateBtn.draw();
       WDirty = true;
     }
-    if (PressIt(WRadioPowerBtn) == true) {
-      WRadioPower++;
-
-      if (WRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-        WRadioPower = 0;
-      }
-      WRadioPowerBtn.setText(HighPowerText[WRadioPower]);
-      WRadioPowerBtn.draw();
-      WDirty = true;
-    }
-
     if (PressIt(BDataRateBtn) == true) {
       BDataRate++;
       if (BDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
@@ -808,116 +795,107 @@ void SetupScreen() {
       BDataRateBtn.draw();
       BDirty = true;
     }
-    if (PressIt(BRadioPowerBtn) == true) {
-      BRadioPower++;
-      if (BRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-        BRadioPower = 0;
-      }
-      BRadioPowerBtn.setText(HighPowerText[BRadioPower]);
-      BRadioPowerBtn.draw();
-      BDirty = true;
-    }
 
     if (PressIt(RResetBtn) == true) {
+
+      ShowResetScreen();
+
       EBYTE_0.restoreDefaults();
+      EBYTE_0.init();
+
       EBYTE_0.setPacketSize(SUB_64BYTES);
       EBYTE_0.setRSSISignalStrength(false);
       EBYTE_0.setRSSIAmbientNoise(true);
       EBYTE_0.setChannel(5);
       EBYTE_0.saveParameters(EBYTE_WRITE_PERMANENT);
-      SmartDelay(50);
+      RChannel = EBYTE_0.getChannel();
+      RDataRate = EBYTE_0.getAirDataRate();
+      RAddressL = EBYTE_0.getAddressL();
+      RAddressH = EBYTE_0.getAddressH();
+      DrawSettingsScreen();
 #ifdef DEBUG_ON
       EBYTE_0.printParameters();
 #endif
     }
 
     if (PressIt(WResetBtn) == true) {
+      ShowResetScreen();
       EBYTE_1.restoreDefaults();
+      EBYTE_1.init();
+      EBYTE_1.setChannel(15);
       EBYTE_1.setPacketSize(SUB_64BYTES);
       EBYTE_1.setRSSISignalStrength(false);
       EBYTE_1.setRSSIAmbientNoise(true);
-      EBYTE_1.setChannel(15);
       EBYTE_1.saveParameters(EBYTE_WRITE_PERMANENT);
-      SmartDelay(50);
+      WChannel = EBYTE_1.getChannel();
+      WDataRate = EBYTE_1.getAirDataRate();
+      WAddressL = EBYTE_1.getAddressL();
+      WAddressH = EBYTE_1.getAddressH();
+      DrawSettingsScreen();
 #ifdef DEBUG_ON
       EBYTE_1.printParameters();
 #endif
     }
     if (PressIt(BResetBtn) == true) {
+      ShowResetScreen();
       EBYTE_2.restoreDefaults();
+      EBYTE_2.init();
+      EBYTE_2.setChannel(1);
       EBYTE_2.setPacketSize(SUB_64BYTES);
       EBYTE_2.setRSSISignalStrength(false);
       EBYTE_2.setRSSIAmbientNoise(true);
       EBYTE_2.setChannel(1);
       EBYTE_2.saveParameters(EBYTE_WRITE_PERMANENT);
-      SmartDelay(50);
+      BChannel = EBYTE_2.getChannel();
+      BDataRate = EBYTE_2.getAirDataRate();
+      BAddressL = EBYTE_2.getAddressL();
+      BAddressH = EBYTE_2.getAddressH();
+      DrawSettingsScreen();
 #ifdef DEBUG_ON
       EBYTE_2.printParameters();
 #endif
     }
   }
 
-  SmartDelay(50);
-
   if (RDirty) {
-    // save the encryption keys
-    EncryptHigh = REncryptKey >> 8;
-    EncryptLow = REncryptKey & 0b0000000011111111;
     EBYTE_0.setChannel(RChannel);
+    EBYTE_0.setPacketSize(SUB_64BYTES);
     EBYTE_0.setAirDataRate(RDataRate);
     EBYTE_0.setTransmitPower(RRadioPower);
     EBYTE_0.setRSSISignalStrength(false);
     EBYTE_0.setRSSIAmbientNoise(true);
-    EBYTE_0.setEncryptonH(EncryptHigh);
-    EBYTE_0.setEncryptonL(EncryptLow);
+    EBYTE_0.setAddressL(RAddressL);
+    EBYTE_0.setAddressH(RAddressH);
     EBYTE_0.saveParameters(EBYTE_WRITE_PERMANENT);
-    EEPROM.put(2, EncryptHigh);
-    EEPROM.put(3, EncryptLow);
-    EEPROM.commit();
-
 #ifdef DEBUG_ON
-    SmartDelay(1000);
     EBYTE_0.printParameters();
 #endif
   }
   if (WDirty) {
-    // save the encryption keys
-    EncryptHigh = WEncryptKey >> 8;
-    EncryptLow = WEncryptKey & 0b0000000011111111;
     EBYTE_1.setChannel(WChannel);
+    EBYTE_1.setPacketSize(SUB_64BYTES);
     EBYTE_1.setAirDataRate(WDataRate);
     EBYTE_1.setTransmitPower(WRadioPower);
     EBYTE_1.setRSSISignalStrength(false);
     EBYTE_1.setRSSIAmbientNoise(true);
-    EBYTE_1.setEncryptonH(EncryptHigh);
-    EBYTE_1.setEncryptonL(EncryptLow);
+    EBYTE_1.setAddressL(WAddressL);
+    EBYTE_1.setAddressH(WAddressH);
     EBYTE_1.saveParameters(EBYTE_WRITE_PERMANENT);
-    EEPROM.put(4, EncryptHigh);
-    EEPROM.put(5, EncryptLow);
-    EEPROM.commit();
-
 #ifdef DEBUG_ON
-    SmartDelay(1000);
     EBYTE_1.printParameters();
 #endif
   }
   if (BDirty) {
-    EncryptHigh = BEncryptKey >> 8;
-    EncryptLow = BEncryptKey & 0b0000000011111111;
     EBYTE_2.setChannel(BChannel);
+    EBYTE_2.setPacketSize(SUB_64BYTES);
     EBYTE_2.setAirDataRate(BDataRate);
     EBYTE_2.setTransmitPower(BRadioPower);
     EBYTE_2.setRSSISignalStrength(false);
     EBYTE_2.setRSSIAmbientNoise(true);
-    EBYTE_2.setEncryptonH(EncryptHigh);
-    EBYTE_2.setEncryptonL(EncryptLow);
+    EBYTE_2.setAddressL(BAddressL);
+    EBYTE_2.setAddressH(BAddressH);
     EBYTE_2.saveParameters(EBYTE_WRITE_PERMANENT);
-    EEPROM.put(6, EncryptHigh);
-    EEPROM.put(7, EncryptLow);
-    EEPROM.commit();
-
 #ifdef DEBUG_ON
-    SmartDelay(1000);
     EBYTE_2.printParameters();
 #endif
   }
@@ -927,8 +905,17 @@ void SetupScreen() {
   SmartDelay(10);
 }
 
-void DrawSetupScreen() {
+void ShowResetScreen() {
 
+  Display.fillRect(26, 26, 268, 188, C_WHITE);
+  Display.fillRect(30, 30, 260, 180, C_RED);
+  Display.setFont(&FONT_ITEM);
+  Display.setTextColor(C_WHITE);
+  Display.setCursor(60, 80);
+  Display.print("Resetting...");
+}
+
+void DrawSettingsScreen() {
 
   digitalWrite(STATUS_PIN, LOW);
 
@@ -949,30 +936,37 @@ void DrawSetupScreen() {
   WChannelBtn.setText(buf);
   sprintf(buf, "%d", BChannel);
   BChannelBtn.setText(buf);
+  sprintf(buf, "%d", RAddressL);
+  RAddressLBtn.setText(buf);
+  sprintf(buf, "%d", RAddressH);
+  RAddressHBtn.setText(buf);
+  sprintf(buf, "%d", WAddressL);
+  WAddressLBtn.setText(buf);
+  sprintf(buf, "%d", WAddressH);
+  WAddressHBtn.setText(buf);
+  sprintf(buf, "%d", BAddressL);
+  BAddressLBtn.setText(buf);
+  sprintf(buf, "%d", BAddressH);
+  BAddressHBtn.setText(buf);
 
   RDataRateBtn.setText(AirRateText[RDataRate]);
   WDataRateBtn.setText(AirRateText[WDataRate]);
   BDataRateBtn.setText(AirRateText[BDataRate]);
 
-  RRadioPowerBtn.setText(HighPowerText[RRadioPower]);
-  WRadioPowerBtn.setText(HighPowerText[WRadioPower]);
-  BRadioPowerBtn.setText(HighPowerText[BRadioPower]);
-
   RChannelBtn.draw();
   WChannelBtn.draw();
   BChannelBtn.draw();
 
-  REncryptBtn.draw();
-  WEncryptBtn.draw();
-  BEncryptBtn.draw();
+  RAddressLBtn.draw();
+  RAddressHBtn.draw();
+  WAddressLBtn.draw();
+  WAddressHBtn.draw();
+  BAddressLBtn.draw();
+  BAddressHBtn.draw();
 
   RDataRateBtn.draw();
   WDataRateBtn.draw();
   BDataRateBtn.draw();
-
-  RRadioPowerBtn.draw();
-  WRadioPowerBtn.draw();
-  BRadioPowerBtn.draw();
 
   RResetBtn.draw();
   WResetBtn.draw();
@@ -989,48 +983,35 @@ void CreateInterface() {
   DeviceIDBtn.setText(buf);
 
   sprintf(buf, "%d", RChannel);
-  RChannelBtn.init(COLUMN_1 - 25, 67, 45, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, FONT_ITEM);
+  RChannelBtn.init(53, 71, 98, 40, C_GREY, C_RED, C_WHITE, C_BLACK, buf, 0, 0, FONT_ITEM);
   sprintf(buf, "%d", WChannel);
-  WChannelBtn.init(COLUMN_2 - 25, 67, 45, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, FONT_ITEM);
+  WChannelBtn.init(160, 71, 98, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, buf, 0, 0, FONT_ITEM);
   sprintf(buf, "%d", BChannel);
-  BChannelBtn.init(COLUMN_3 - 25, 67, 45, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, FONT_ITEM);
+  BChannelBtn.init(266, 71, 98, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, buf, 0, 0, FONT_ITEM);
 
-  REncryptBtn.init(COLUMN_1 + 25, 67, 45, 40, C_GREY, C_WHITE, C_RED, C_BLACK, "X", 0, 0, FONT_ITEM);
-  WEncryptBtn.init(COLUMN_2 + 25, 67, 45, 40, C_GREY, C_WHITE, C_RED, C_BLACK, "X", 0, 0, FONT_ITEM);
-  BEncryptBtn.init(COLUMN_3 + 25, 67, 45, 40, C_GREY, C_WHITE, C_RED, C_BLACK, "X", 0, 0, FONT_ITEM);
+  RAddressLBtn.init(27, 119, 45, 40, C_GREY, C_RED, C_WHITE, C_BLACK, "E1", 0, 0, FONT_ITEM);
+  RAddressHBtn.init(80, 119, 45, 40, C_GREY, C_RED, C_WHITE, C_BLACK, "E2", 0, 0, FONT_ITEM);
+  WAddressLBtn.init(134, 119, 45, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, "E1", 0, 0, FONT_ITEM);
+  WAddressHBtn.init(186, 119, 45, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, "E2", 0, 0, FONT_ITEM);
+  BAddressLBtn.init(239, 119, 45, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, "E1", 0, 0, FONT_ITEM);
+  BAddressHBtn.init(293, 119, 45, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, "E2", 0, 0, FONT_ITEM);
 
-
-  // air data rate
   if (RDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     RDataRate = 0;
   }
-  RDataRateBtn.init(COLUMN_1, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, FONT_ITEM);
+  RDataRateBtn.init(53, 166, 98, 40, C_GREY, C_RED, C_WHITE, C_BLACK, AirRateText[RDataRate], 0, 0, FONT_ITEM);
   if (WDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     WDataRate = 0;
   }
-  WDataRateBtn.init(COLUMN_2, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[WDataRate], 0, 0, FONT_ITEM);
+  WDataRateBtn.init(160, 166, 98, 40, C_GREY, C_WHITE, C_BLACK, C_BLACK, AirRateText[WDataRate], 0, 0, FONT_ITEM);
   if (BDataRate >= ((sizeof(AirRateText) / sizeof(AirRateText[0])))) {
     BDataRate = 0;
   }
-  BDataRateBtn.init(COLUMN_3, 107, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, FONT_ITEM);
+  BDataRateBtn.init(266, 166, 98, 40, C_GREY, C_BLUE, C_WHITE, C_BLACK, AirRateText[BDataRate], 0, 0, FONT_ITEM);
 
-  // radio power
-  if (RRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-    RRadioPower = 0;
-  }
-  RRadioPowerBtn.init(COLUMN_1, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[RRadioPower], 0, 0, FONT_ITEM);
-  if (WRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-    WRadioPower = 0;
-  }
-  WRadioPowerBtn.init(COLUMN_2, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[WRadioPower], 0, 0, FONT_ITEM);
-  if (BRadioPower >= ((sizeof(HighPowerText) / sizeof(HighPowerText[0])))) {
-    BRadioPower = 0;
-  }
-  BRadioPowerBtn.init(COLUMN_3, 147, 95, 40, C_WHITE, C_DKGREY, C_WHITE, C_BLACK, HighPowerText[BRadioPower], 0, 0, FONT_ITEM);
-
-  RResetBtn.init(COLUMN_1, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, FONT_ITEM);
-  WResetBtn.init(COLUMN_2, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, FONT_ITEM);
-  BResetBtn.init(COLUMN_3, 207, 95, 40, C_WHITE, C_RED, C_WHITE, C_BLACK, "Reset", 0, 0, FONT_ITEM);
+  RResetBtn.init(55, 214, 98, 40, C_RED, C_BLACK, C_RED, C_BLACK, "Reset", 0, 0, FONT_ITEM);
+  WResetBtn.init(160, 214, 98, 40, C_RED, C_BLACK, C_RED, C_BLACK, "Reset", 0, 0, FONT_ITEM);
+  BResetBtn.init(266, 214, 98, 40, C_RED, C_BLACK, C_RED, C_BLACK, "Reset", 0, 0, FONT_ITEM);
 
   NumberInput.init(C_BLACK, C_WHITE, C_BLUE, C_WHITE, C_DKBLUE, &FONT_ITEM);
   NumberInput.setMinMax(0.0, 80.0);
@@ -1042,15 +1023,16 @@ void CreateInterface() {
 bool StartRadio_0() {
   ///////////////////////////////////////////////
   // start radio #0
-
-#ifdef SHOW_DEBUG
-  Serial.println("Trans 0");
-  EBYTE_0.printParameters();
-#endif
   DataPacket_0.begin(details(Data_0), &Serial_0);
   if (EBYTE_0.init()) {
     RChannel = EBYTE_0.getChannel();
     RDataRate = EBYTE_0.getAirDataRate();
+    RAddressL = EBYTE_0.getAddressL();
+    RAddressH = EBYTE_0.getAddressH();
+#ifdef DEBUG_ON
+    Serial.println("EBYTE_0");
+    EBYTE_0.printParameters();
+#endif
     return true;
   }
   return false;
@@ -1058,16 +1040,16 @@ bool StartRadio_0() {
 bool StartRadio_1() {
   ///////////////////////////////////////////////
   // start radio #1
-
-#ifdef SHOW_DEBUG
-  Serial.println("Trans 1");
-  EBYTE_0.printParameters();
-#endif
   DataPacket_1.begin(details(Data_1), &Serial_1);
   if (EBYTE_1.init()) {
     WChannel = EBYTE_1.getChannel();
     WDataRate = EBYTE_1.getAirDataRate();
-
+    WAddressL = EBYTE_1.getAddressL();
+    WAddressH = EBYTE_1.getAddressH();
+#ifdef DEBUG_ON
+    Serial.println("EBYTE_1");
+    EBYTE_1.printParameters();
+#endif
     return true;
   }
   return false;
@@ -1076,17 +1058,17 @@ bool StartRadio_1() {
 bool StartRadio_2() {
   ///////////////////////////////////////////////
   // start radio #2
-
-#ifdef SHOW_DEBUG
-  Serial.println("Trans 2");
-  EBYTE_0.printParameters();
-#endif
   DataPacket_2.begin(details(Data_2), &Serial_2);
   if (EBYTE_2.init()) {
     //EBYTE_0.setPacketSize(SUB_64BYTES);
     BChannel = EBYTE_2.getChannel();
     BDataRate = EBYTE_2.getAirDataRate();
-
+    BAddressL = EBYTE_2.getAddressL();
+    BAddressH = EBYTE_2.getAddressH();
+#ifdef DEBUG_ON
+    Serial.println("EBYTE_2");
+    EBYTE_2.printParameters();
+#endif
     return true;
   }
   return false;
@@ -1106,18 +1088,6 @@ void GetParameters() {
     EEPROM.put(1, DeviceID);
     EEPROM.commit();
   }
-  // red
-  EEPROM.get(2, EncryptLow);
-  EEPROM.get(3, EncryptHigh);
-  REncryptKey = (EncryptHigh << 8) | EncryptLow;
-  // white
-  EEPROM.get(4, EncryptLow);
-  EEPROM.get(5, EncryptHigh);
-  WEncryptKey = (EncryptHigh << 8) | EncryptLow;
-  // blue
-  EEPROM.get(6, EncryptLow);
-  EEPROM.get(7, EncryptHigh);
-  BEncryptKey = (EncryptHigh << 8) | EncryptLow;
 
   EEPROM.get(10, ScreenRight);
   EEPROM.get(20, ScreenLeft);
